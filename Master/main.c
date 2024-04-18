@@ -20,9 +20,11 @@ float OutTempReading;
 float OutTemps[9] = {9999, 9999, 9999, 9999, 9999, 9999, 9999, 9999, 9999};
 float OutTempAve = 9999;
 char GetTempFlag = 0;
-unsigned int tx_index, rx_index = 0;
-char transmission_buf[32];
-char receive_buf[32];
+unsigned int tx_I2C_index = 0, rx_I2C_index = 0, UART_rx_I2C_index = 0, UART_tx_I2C_index = 0;
+char transmission_I2C_buf[32];
+char receive_I2C_buf[32];
+char transmission_UART_buf[32];
+char receive_UART_buf[32];
 int rx = 0;   // 0 means transmit mode 1 means receive mode
 
 // BEGIN Get_Temp_Array
@@ -72,23 +74,23 @@ void I2C_send(int Address) {
 
 // BEGIN LM72_INIT
 void LM72_INIT() {
-	tx_index = 0;
-	transmission_buf[0] = 0x01; // Pointer Byte
-	transmission_buf[1] = 0x00; // Config register desired contents
+	tx_I2C_index = 0;
+	transmission_I2C_buf[0] = 0x01; // Pointer Byte
+	transmission_I2C_buf[1] = 0x00; // Config register desired contents
 	UCB0TBCNT = 2;
 	I2C_send(INTEMP_Address);
-	tx_index = 0;
+	tx_I2C_index = 0;
 	I2C_send(OUTTEMP_Address);
 }
 // END LM72_INIT
 
 // BEGIN GETTEMP
 float GetTemp(Address){
-	tx_index = 0;
-	transmission_buf[0] = 0x00; //Pointer Byte
+	tx_I2C_index = 0;
+	transmission_I2C_buf[0] = 0x00; //Pointer Byte
 	UCB0TBCNT = 1;
 	I2C_send(Address);
-	rx_index = 0;
+	rx_I2C_index = 0;
 	rx = 1;
 	UCB0TBCNT = 2;
 	UCB0CTLW0 &= ~UCTR; // Receive Mode
@@ -97,7 +99,7 @@ float GetTemp(Address){
 	UCB0IE &= ~UCRXIE0; // I2C Rx interrupt disable
 	rx = 0;
 	UCB0CTLW0 |= UCTR; // Transmit Mode
-	return receive_buf[0] + 0.5 * ((receive_buf[1] & BIT7) >> 7);
+	return receive_I2C_buf[0] + 0.5 * ((receive_I2C_buf[1] & BIT7) >> 7);
 	}
 // END GETTEMP
 
@@ -161,6 +163,8 @@ void INIT(){
 	
 	// Interrupts
 	UCA1IE |= UCRXIE; // UART RX interrupt enable
+	// Use UCA1IE |= UCTXCPTIE; enable tx interrupt when needed
+	// Use UCA1IFG &= ~UCTXCPTIFG; clear tx flag
 	
 	PM5CTL0 &= ~LOCKLPM5; // disable low power mode
 	__enable_interrupt(); //Global interrupt enable
@@ -186,15 +190,23 @@ int main(void)
 #pragma vector = EUSCI_B0_VECTOR
 __interrupt void EUSCI_B0_I2C_ISR(void) {
   if (rx == 0) {
-    UCB0TXBUF = transmission_buf[tx_index];
-    tx_index += 1;
+    UCB0TXBUF = transmission_I2C_buf[tx_I2C_index];
+    tx_I2C_index += 1;
   } else {
-    receive_buf[rx_index] = UCB0RXBUF;
-    rx_index += 1;
+    receive_I2C_buf[rx_I2C_index] = UCB0RXBUF;
+    rx_I2C_index += 1;
   }
 }
 // END EUSCI_B0 INTERRUPT SERVICE ROUTINE
 
+//BEGIN EUSCI_A1 INTERRUPT SERVICE ROUTINE
+#pragma vector = EUSCI_A1_VECTOR
+__interrupt void EUSCI_A1_UART_ISR(void){
+	//TODO what to do in here
+	
+	UCA1IFG &= ~UCTXCPTIFG; clear tx flag
+}
+//END EUSCI_A1 INTERRUPT SERVICE ROUTINE
 
 // BEGIN TIMER 1 INTERRUPT SERVICE ROUTINE (0.5s)
 #pragma vector = TIMER1_B0_VECTOR
