@@ -23,7 +23,7 @@ WebServer server(555);
 void setup() {
   Serial.begin(115200);
 
-  MySerial.begin(11500, SERIAL_8N1, MySerialRX_PIN, MySerialTX_PIN);
+  MySerial.begin(9600, SERIAL_8N1, MySerialRX_PIN, MySerialTX_PIN);
 
   WiFi.begin(ssid, password); 
   while (WiFi.status() != WL_CONNECTED) {
@@ -52,31 +52,40 @@ void loop() {
 
 void request_data(){
   MySerial.write('R');
-  while(MySerial.available()==0){}
+  delay(1000);
   while(MySerial.available()>0){
-    Rx_buf[Rx_index] = MySerial.read();
+    Rx_Buf[Rx_index] = MySerial.read();
     Rx_index += 1;
   }
   Rx_index = 0;
-  OUTTEMP = Rx_buf[0];
-  INTEMP = Rx_buf[1];
-  GarageState = Rx_buf[2];
+  OUTTEMP = Rx_Buf[0];
+  INTEMP = Rx_Buf[1];
+  GarageState = Rx_Buf[2];
 }
 
 void handle_OnConnect() {
-  Serial.println("Garage Closed");
+  Serial.println("Client Connected");
+  request_data();
   server.send(200, "text/html", SendHTML()); 
 }
 
 void handle_GarageOpen() {
   Serial.println("Garage Opening");
   GarageState = 1;
+  Rx_Buf[2] = 1;
+  MySerial.write('O');
+  delay(100);
+  request_data();
   server.send(200, "text/html", SendHTML()); 
 }
 
 void handle_GarageClosed() {
   Serial.println("Garage Closing");
   GarageState = 0;
+  Rx_Buf[2] = 0;
+  MySerial.write('C');
+  delay(100);
+  request_data();
   server.send(200, "text/html", SendHTML()); 
 }
 
