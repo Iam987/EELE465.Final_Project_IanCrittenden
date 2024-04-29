@@ -20,12 +20,15 @@ float OutTempReading;
 float OutTemps[9] = {9999, 9999, 9999, 9999, 9999, 9999, 9999, 9999, 9999};
 float OutTempAve = 9999;
 char GetTempFlag = 0;
-unsigned int tx_I2C_index = 0, rx_I2C_index = 0, UART_rx_I2C_index = 0, UART_tx_I2C_index = 0;
+unsigned int tx_I2C_index = 0, rx_I2C_index = 0, rx_UART_index = 0, tx_UART_index = 0;
 char transmission_I2C_buf[32];
 char receive_I2C_buf[32];
 char transmission_UART_buf[32];
 char receive_UART_buf[32];
-int rx = 0;   // 0 means transmit mode 1 means receive mode
+int rx_I2C = 0;   // 0 means transmit mode 1 means receive mode
+int rx_UART = 1;
+char duty = 'N';
+int GarageState = 0;
 
 // BEGIN Get_Temp_Array
 void Get_Temp_Array(float *temp_array, float temp) {
@@ -91,13 +94,13 @@ float GetTemp(Address){
 	UCB0TBCNT = 1;
 	I2C_send(Address);
 	rx_I2C_index = 0;
-	rx = 1;
+	rx_I2C = 1;
 	UCB0TBCNT = 2;
 	UCB0CTLW0 &= ~UCTR; // Receive Mode
 	UCB0IE |= UCRXIE0;  // I2C Rx interrupt enable
 	I2C_send(Address);
 	UCB0IE &= ~UCRXIE0; // I2C Rx interrupt disable
-	rx = 0;
+	rx_I2C = 0;
 	UCB0CTLW0 |= UCTR; // Transmit Mode
 	return receive_I2C_buf[0] + 0.5 * ((receive_I2C_buf[1] & BIT7) >> 7);
 	}
@@ -107,11 +110,15 @@ float GetTemp(Address){
 void Handle_Temperatures() {
 	GetTempFlag = 0;
 	InTempReading = GetTemp(INTEMP_Address);
+	transmission_UART_buf[1] = (receive_I2C_buf[1] & BIT7) >> 7;
 	Get_Temp_Array(InTemps, InTempReading);
 	InTempAve = Moving_Ave(InTemps, 9);
 	OutTempReading = GetTemp(OUTTEMP_Address);
+    transmission_UART_buf[3] = (receive_I2C_buf[1] & BIT7) >> 7;
 	Get_Temp_Array(OutTemps, OutTempReading);
 	OutTempAve = Moving_Ave(OutTemps, 9);
+	transmission_UART_buf[0] = OutTempAve;
+	transmission_UART_buf[2] = InTempAve;
 }
 // END HANDLE_TEMPERATURES
 
@@ -133,9 +140,9 @@ void INIT(){
 	
 	// UART Setup
 	UCA1CTLW0 |= UCSWRST; // Software RST ON
-	UCA1CTLW0 |= UCSSEL__SMCLK;
-	UCA1BRW = 8; // BW = 115200
-	UCA1MCTLW |= 0xD600;
+	UCA1CTLW0 |= UCSSEL__ACLK;
+	UCA1BRW = 3; // BW = 9600
+	UCA1MCTLW |= 0x9200;
 	UCA1CTLW0 &= ~UCSWRST; //Software RST OFF
 	
 	//Timer setup
@@ -180,6 +187,33 @@ int main(void)
 		if (GetTempFlag == 1) {
 			Handle_Temperatures();
 		}
+
+		if(duty == 'R'){
+		    transmission_UART_buf[4] = GarageState;
+		    tx_UART_index = 0;
+		    rx_UART = 0;
+		    //UCA1IE |= UCTXCPTIE; //enable tx interrupt
+		    UCA1TXBUF = transmission_UART_buf[0];
+		    __delay_cycles(2000);
+            UCA1TXBUF = transmission_UART_buf[1];
+            __delay_cycles(2000);
+            UCA1TXBUF = transmission_UART_buf[2];
+            __delay_cycles(2000);
+            UCA1TXBUF = transmission_UART_buf[3];
+            __delay_cycles(2000);
+            UCA1TXBUF = transmission_UART_buf[4];
+            __delay_cycles(2000);
+            UCA1IE &= ~UCTXCPTIE; //Dissable tx interrupt
+		    rx_UART = 1;
+		    duty = 'N';
+		}
+		else if(duty == 'O'){
+		    GarageState = 1;
+		}
+		else if(duty == 'C'){
+		    GarageState = 0;
+		}
+		else{}
 	}
 	return 0;
 }
@@ -189,7 +223,7 @@ int main(void)
 // BEGIN EUSCI_B0 INTERRUPT SERVICE ROUTINE
 #pragma vector = EUSCI_B0_VECTOR
 __interrupt void EUSCI_B0_I2C_ISR(void) {
-  if (rx == 0) {
+  if (rx_I2C == 0) {
     UCB0TXBUF = transmission_I2C_buf[tx_I2C_index];
     tx_I2C_index += 1;
   } else {
@@ -202,9 +236,28 @@ __interrupt void EUSCI_B0_I2C_ISR(void) {
 //BEGIN EUSCI_A1 INTERRUPT SERVICE ROUTINE
 #pragma vector = EUSCI_A1_VECTOR
 __interrupt void EUSCI_A1_UART_ISR(void){
-	//TODO what to do in here
-	
-	UCA1IFG &= ~UCTXCPTIFG; clear tx flag
+    if(rx_UART == 1){
+        duty = UCA1RXBUF;
+    }
+    else{
+        /*tx_UART_index += 1;;
+        if(tx_UART_index > 1){
+            UCA1IE &= ~UCTXCPTIE; //dissable tx interrupt
+            rx_UART = 1;
+        }
+        UCA1TXBUF = transmission_UART_buf[tx_UART_index];
+        UCA1TXBUF = transmission_UART_buf[1];
+        __delay_cycles(50);
+        UCA1TXBUF = transmission_UART_buf[2];
+        __delay_cycles(50);
+        UCA1TXBUF = transmission_UART_buf[3];
+        __delay_cycles(50);
+        UCA1TXBUF = transmission_UART_buf[4];
+        __delay_cycles(50);
+        UCA1IFG &= ~UCTXCPTIFG; //clear tx flag
+        UCA1IE &= ~UCTXCPTIE; //dissable tx interrupt
+        rx_UART = 1;*/
+    }
 }
 //END EUSCI_A1 INTERRUPT SERVICE ROUTINE
 

@@ -13,6 +13,10 @@ int Tx_index = 0;
 int GarageState = 0;
 float INTEMP = 4;
 float OUTTEMP = 5;
+float INTEMP_F = 4;
+float OUTTEMP_F = 5;
+char State = 'L';
+String Pass = "1010A";
 
 /* Put your SSID & Password */
 const char* ssid = "ShedWhyFi";
@@ -41,6 +45,8 @@ void setup() {
   server.on("/Refresh",handle_Refresh);
   server.on("/GarageOpen",handle_GarageOpen);
   server.on("/GarageClosed",handle_GarageClosed);
+  server.on("/Lock",handle_Lock);
+  server.on("/1010A", handle_Unlock);
   server.onNotFound(handle_NotFound);
   
   server.begin();
@@ -52,21 +58,38 @@ void loop() {
 
 void request_data(){
   MySerial.write('R');
-  delay(1000);
+  delay(500);
   while(MySerial.available()>0){
     Rx_Buf[Rx_index] = MySerial.read();
     Rx_index += 1;
   }
   Rx_index = 0;
   OUTTEMP = Rx_Buf[0];
-  INTEMP = Rx_Buf[1];
-  GarageState = Rx_Buf[2];
+  OUTTEMP += 0.5 * Rx_Buf[1];
+  INTEMP = Rx_Buf[2];
+  INTEMP += 0.5 * Rx_Buf[3] + 1;
+  OUTTEMP_F = OUTTEMP * 1.8 + 32;
+  INTEMP_F = INTEMP * 1.8 + 32;
+  GarageState = Rx_Buf[4];
 }
 
 void handle_OnConnect() {
   Serial.println("Client Connected");
   request_data();
   server.send(200, "text/html", SendHTML()); 
+}
+
+void handle_Lock() {
+  State = 'L';
+  server.send(200, "text/html",SendHTML());
+}
+
+void handle_Unlock(){
+  if(Pass == "1010A"){
+    State = 'U';
+  }
+  server.send(200, "text/html",SendHTML());
+
 }
 
 void handle_GarageOpen() {
@@ -90,9 +113,9 @@ void handle_GarageClosed() {
 }
 
 void handle_Refresh(){
-  Serial.println("");
+  Serial.println("Refresh");
   request_data();
-  server.send(200,"text/html",SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_NotFound(){
@@ -111,19 +134,26 @@ String SendHTML(){
   ptr +=".button-close {background-color: #c90000;}\n";
   ptr +=".button-close:active {background-color: #2c3e50;}\n";
   ptr +="p {font-size: 25px;color: #888;margin-bottom: 10px;}\n";
+  ptr +="h4 {font-size: 25px;color: #a81d09;margin-bottom: 10px;}\n";
   ptr +="</style>\n";
   ptr +="</head>\n";
   ptr +="<body>\n";
   ptr +="<h1>EELE465_Final_Project Web Server - Ian Crittenden</h1>\n";
   
-   if(GarageState)
-  {ptr +="<p>Garage Status: Open</p><a class=\"button button-close\" href=\"/GarageClosed\">Close</a>\n";}
-  else
-  {ptr +="<p>Garage Status: Closed</p><a class=\"button button-open\" href=\"/GarageOpen\">Open</a>\n";}
+  if(State == 'L'){
+    ptr +="<h4>Locked!</h4>\n";
+  }
+  else{
+    ptr +="<a class=\"button button-close\" href=\"/Lock\">Lock</a>\n";
+    if(GarageState)
+    {ptr +="<p>Garage Status: Open</p><a class=\"button button-close\" href=\"/GarageClosed\">Close</a>\n";}
+    else
+    {ptr +="<p>Garage Status: Closed</p><a class=\"button button-open\" href=\"/GarageOpen\">Open</a>\n";}
+  }
 
   ptr +="<a class=\"button button-open\" href=\"/Refresh\">Refresh</a>\n";
-  ptr +="<p>Outdoor Temp: " + String(OUTTEMP) + "</p>\n";
-  ptr +="<p>Indoor Temp: " + String(INTEMP) + "</p>\n";
+  ptr +="<p>Outdoor Temp: " + String(OUTTEMP,1) + "&deg;C, "+ String(OUTTEMP_F,1) + "&deg;F</p>\n";
+  ptr +="<p>Indoor Temp: " + String(INTEMP,1) + "&deg;C, "+ String(INTEMP_F,1) + "&deg;F</p>\n";
 
   ptr +="</body>\n";
   ptr +="</html>\n";

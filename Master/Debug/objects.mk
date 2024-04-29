@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lfrwp_init.a -lnrf24.h -llibc.a
+LIBS := -lfrwp_init.a -llibc.a
 
