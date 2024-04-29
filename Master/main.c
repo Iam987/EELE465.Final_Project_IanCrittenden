@@ -240,23 +240,7 @@ __interrupt void EUSCI_A1_UART_ISR(void){
         duty = UCA1RXBUF;
     }
     else{
-        /*tx_UART_index += 1;;
-        if(tx_UART_index > 1){
-            UCA1IE &= ~UCTXCPTIE; //dissable tx interrupt
-            rx_UART = 1;
-        }
-        UCA1TXBUF = transmission_UART_buf[tx_UART_index];
-        UCA1TXBUF = transmission_UART_buf[1];
-        __delay_cycles(50);
-        UCA1TXBUF = transmission_UART_buf[2];
-        __delay_cycles(50);
-        UCA1TXBUF = transmission_UART_buf[3];
-        __delay_cycles(50);
-        UCA1TXBUF = transmission_UART_buf[4];
-        __delay_cycles(50);
-        UCA1IFG &= ~UCTXCPTIFG; //clear tx flag
-        UCA1IE &= ~UCTXCPTIE; //dissable tx interrupt
-        rx_UART = 1;*/
+
     }
 }
 //END EUSCI_A1 INTERRUPT SERVICE ROUTINE
