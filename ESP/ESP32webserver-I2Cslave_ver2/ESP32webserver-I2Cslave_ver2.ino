@@ -93,21 +93,25 @@ void handle_Unlock(){
 }
 
 void handle_GarageOpen() {
+  if(State == 'U'){
   Serial.println("Garage Opening");
   GarageState = 1;
   Rx_Buf[2] = 1;
   MySerial.write('O');
   delay(100);
+  }
   request_data();
   server.send(200, "text/html", SendHTML()); 
 }
 
 void handle_GarageClosed() {
+  if(State == 'U'){
   Serial.println("Garage Closing");
   GarageState = 0;
   Rx_Buf[2] = 0;
   MySerial.write('C');
   delay(100);
+  }
   request_data();
   server.send(200, "text/html", SendHTML()); 
 }
