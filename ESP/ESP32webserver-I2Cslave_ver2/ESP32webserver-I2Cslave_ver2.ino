@@ -58,7 +58,7 @@ void loop() {
 
 void request_data(){
   MySerial.write('R');
-  delay(500);
+  delay(1000);
   while(MySerial.available()>0){
     Rx_Buf[Rx_index] = MySerial.read();
     Rx_index += 1;

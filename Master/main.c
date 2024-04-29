@@ -29,6 +29,7 @@ int rx_I2C = 0;   // 0 means transmit mode 1 means receive mode
 int rx_UART = 1;
 char duty = 'N';
 int GarageState = 0;
+int RST = 0;
 
 // BEGIN Get_Temp_Array
 void Get_Temp_Array(float *temp_array, float temp) {
@@ -67,6 +68,10 @@ void I2C_send(int Address) {
     if ((UCB0IFG & UCSTPIFG) != 0) {
       break;
     }
+  }
+  if(i > 65500){
+      UCB0IFG |= UCSTPIFG;
+      //RST = 1;
   }
   // while ((UCB0IFG & UCSTPIFG) == 0){
   // Wait for stop
@@ -175,6 +180,11 @@ void INIT(){
 	
 	PM5CTL0 &= ~LOCKLPM5; // disable low power mode
 	__enable_interrupt(); //Global interrupt enable
+    //UCB0CTLW0 |= UCTR; // Transmit Mode
+    //rx_I2C = 0;
+    //UCB0TBCNT = 1;
+
+	RST = 0;
 }
 //END INIT
 
@@ -214,6 +224,10 @@ int main(void)
 		    GarageState = 0;
 		}
 		else{}
+		if(RST == 1){
+		    INIT();
+		    LM72_INIT();
+		}
 	}
 	return 0;
 }
