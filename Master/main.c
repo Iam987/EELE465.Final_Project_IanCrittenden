@@ -1,4 +1,5 @@
 //Master Code
+// Reference: https://github.com/selimg76/nRF24-MSP430
 #include <msp430.h> 
 #include <math.h>
 #include "nrf24.h"
