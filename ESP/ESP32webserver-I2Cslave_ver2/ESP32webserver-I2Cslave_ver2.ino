@@ -137,7 +137,7 @@ String SendHTML(){
   ptr +=".button-open:active {background-color: #2980b9;}\n";
   ptr +=".button-close {background-color: #c90000;}\n";
   ptr +=".button-close:active {background-color: #2c3e50;}\n";
-  ptr +="p {font-size: 25px;color: #888;margin-bottom: 10px;}\n";
+  ptr +="p {font-size: 25px;color: #af17e8;margin-bottom: 10px;}\n";
   ptr +="h4 {font-size: 25px;color: #a81d09;margin-bottom: 10px;}\n";
   ptr +="</style>\n";
   ptr +="</head>\n";
