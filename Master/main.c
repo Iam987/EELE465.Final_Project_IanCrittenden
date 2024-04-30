@@ -199,6 +199,10 @@ void Write_Payload_MSB_First(int pyld[], int index3);
 void INIT(){
     __delay_cycles(100); //Power on Reset
 
+    P1DIR |= BIT4;
+    P1OUT &= ~BIT4;
+
+
     //NRF24L01 SPI setup
     P2OUT &= 0x00; //Clear P2OUT
     P2DIR |= MOSI + SCLK + CE + CSN; //OUTPUT pins
@@ -399,6 +403,7 @@ int main(void)
 		                   CSN_Off();
 		                   Instruction_Byte_MSB_First(FLUSH_TX);
 		                   CSN_On();
+		                   P1OUT |= BIT4;
 
 		           }
 
@@ -431,6 +436,7 @@ int main(void)
 	                           CSN_Off();
 	                           Instruction_Byte_MSB_First(FLUSH_TX);
 	                           CSN_On();
+	                           P1OUT &= ~BIT4;
 
 	                   }
 		}

@@ -89,6 +89,9 @@ void main(void)
     __delay_cycles(100); //power on reset
 
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
+    P2DIR |= BIT0;
+    P2OUT &= ~BIT0;
+
     //P1DIR &= 0x00 ;
     P1OUT &= 0x00;
     P1DIR |= MOSI + SCLK + CE + CSN ;  //Output Pins
@@ -181,14 +184,14 @@ void main(void)
             Read_Byte_MSB_First(32,read_PAYLOAD);
             CSN_On();
             pipe_nr = status_reg & BIT4;
-            ltoa(pipe_nr,pipe_nr_chr,10);
+            ltoa(pipe_nr,pipe_nr_chr,8);
             //ser_output(pipe_nr_chr);
             //ser_output(next_satir);
             j=0;
             l=0;
             for (i=0;i<=14;i+=2){
                 pyld1[j]=read_PAYLOAD[i] | (read_PAYLOAD[i+1] << 8);
-                ltoa(pyld1[j],buf,10);
+                ltoa(pyld1[j],buf,8);
                 ser_output(buf); ser_output(bosluk);
                 j++;
 
@@ -196,7 +199,7 @@ void main(void)
             ser_output(next_satir);
             for (i=16;i<=30;i+=2){
                             pyld2[l]=read_PAYLOAD[i] | (read_PAYLOAD[i+1] << 8);
-                            ltoa(pyld1[j],buf,10);
+                            ltoa(pyld1[j],buf,8);
                             //ser_output(buf); ser_output(bosluk);
                             l++;
                         }
@@ -330,6 +333,7 @@ void Write_Payload_MSB_First(int pyld[], int index3)
 void ser_output(char *str){
     while(*str != 0){
         Received_instruction = *str;
+        P2OUT ^= BIT0;
     }
 }
 
